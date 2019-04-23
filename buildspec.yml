@@ -1,0 +1,23 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo '#!/bin/bash' > /usr/local/bin/ok; echo 'if [[ "$CODEBUILD_BUILD_SUCCEEDING" == "0" ]]; then exit 1; else exit 0; fi' >> /usr/local/bin/ok; chmod +x /usr/local/bin/ok
+      - npm install -g yarn
+      - yarn install --frozen-lockfile
+  build:
+    commands:
+      - echo Build started on `date`
+      - yarn build
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - ok && echo push dist to S3
+      - ok && aws s3 sync --delete dist/ "s3://${BUCKET_NAME}"
+      - ok && aws cloudfront create-invalidation --distribution-id ${DISTRIBUTION_ID} --paths "/*"
+
+#cache:
+#  paths:
+#    - '/composer/cache/**/*'
+#    - '/var/lib/docker/**/*'
