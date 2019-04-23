@@ -1,5 +1,5 @@
 <template>
-  <v-layout column>
+  <v-layout column style="height: calc(100vh - 36px)">
     <v-toolbar class="purple" dark :tabs="!!structure">
       <v-toolbar-title>
         <v-layout row>
@@ -9,6 +9,12 @@
       </v-toolbar-title>
 
       <v-spacer></v-spacer>
+
+      <v-select
+        class="lang-select"
+        v-model="lang"
+        :items="['de', 'en']"
+      ></v-select>
 
       <v-btn v-if="structure" icon @click="save">
         <v-icon>save</v-icon>
@@ -56,7 +62,7 @@
         <v-btn @click="create">
           Create New Assessment
         </v-btn>
-        <v-btn>
+        <v-btn @click="open">
           Open Existing Assessment
         </v-btn>
       </v-layout>
@@ -70,9 +76,20 @@
       </v-tab-item>
 
       <v-tab-item class="pa-5">
-        <v-btn absolute dark fab bottom right color="green" @click="addArea">
-          <v-icon>add</v-icon>
-        </v-btn>
+        <v-fab-transition>
+          <v-btn
+            v-show="tab === 1"
+            fixed
+            dark
+            fab
+            bottom
+            right
+            color="green"
+            @click="addArea"
+          >
+            <v-icon>add</v-icon>
+          </v-btn>
+        </v-fab-transition>
 
         <v-expansion-panel expand>
           <question-area
@@ -85,17 +102,20 @@
       </v-tab-item>
 
       <v-tab-item class="pa-5">
-        <v-btn
-          absolute
-          dark
-          fab
-          bottom
-          right
-          color="green"
-          @click="addQuestion"
-        >
-          <v-icon>add</v-icon>
-        </v-btn>
+        <v-fab-transition>
+          <v-btn
+            v-show="tab === 2"
+            absolute
+            dark
+            fab
+            bottom
+            right
+            color="green"
+            @click="addQuestion"
+          >
+            <v-icon>add</v-icon>
+          </v-btn>
+        </v-fab-transition>
 
         <v-expansion-panel expand>
           <question
@@ -117,11 +137,22 @@
 .tab-full-height > .v-window__container > .v-window-item {
   height: 100%;
 }
+.tab-full-height {
+  overflow-y: scroll;
+}
+.v-btn--bottom.v-btn--absolute {
+  bottom: 36px;
+}
+.lang-select {
+  width: 60px;
+  flex: none;
+}
 </style>
 
 <script>
 import Question from '../components/Question'
 import Area from '../components/Area'
+import SelfAssessment from '../lib/SelfAssessment'
 
 export default {
   components: {
@@ -139,8 +170,12 @@ export default {
     areas() {
       const list = []
       this.structure.areas.forEach(area => {
+        let text = area.title[this.lang]
+        if (!text) text = area.title.en
+        if (!text) text = area.key
+
         list.push({
-          text: area.title[this.lang],
+          text,
           value: area.key
         })
       })
@@ -154,15 +189,15 @@ export default {
         questions: []
       }
     },
-    open() {
+    async open() {
       // TODO show file chooser and then load content
-      this.structure = {
-        areas: [],
-        questions: []
-      }
+      this.structure = await SelfAssessment.select()
     },
-    save() {
+    async save() {
+      const xml = await SelfAssessment.stringify(this.structure)
+
       // TODO download file
+      console.log('we got the xml', xml) // eslint-disable-line
     },
     close() {
       this.structure = false
@@ -172,7 +207,7 @@ export default {
       this.structure.questions.push({
         key: `question_${i}`,
         title: {
-          en: `Area ${i}`
+          en: `Question ${i}`
         },
         description: {
           en: null
@@ -187,6 +222,9 @@ export default {
         key: `area_${i}`,
         title: {
           en: `Area ${i}`
+        },
+        description: {
+          en: null
         }
       })
     }
